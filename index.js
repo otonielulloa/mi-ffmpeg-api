@@ -6,7 +6,6 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 
 app.post('/render', (req, res) => {
-    // Tomamos imagenes y audio, ignorando el guion ya que no usaremos subtítulos
     const { imagenes, audio } = req.body;
     
     if (!imagenes || !audio) {
@@ -29,16 +28,13 @@ app.post('/render', (req, res) => {
         // 2. Construir la lista de fuentes de imágenes de forma dinámica
         let inputSources = '';
         imagenes.forEach((img) => {
-            // Cada imagen se lee como loop y se le asigna su duración exacta
             inputSources += `-loop 1 -t ${img.duracion} -i "${img.imageUrl}" `;
         });
 
-        // Comando final de FFmpeg: Concatenación simple de imágenes secuenciales con audio
-        // Usamos -map y concat=n para unir las fuentes de video, y -map a para mapear el audio
-        // Eliminamos drawtext y cualquier filter complex para que no dé errores
-        const ffmpegCommand = `ffmpeg -y ${inputSources} -i ${audioPath} -filter_complex "concat=n=${imagenes.length}:v=1:a=0" -map "[v]" -map a -c:v libx264 -pix_fmt yuv420p -aspect 9:16 -shortest -crf 18 ${outputPath}`;
+        // Comando Corregido: Agregamos [v] al final de concat para que el mapeo funcione perfectamente
+        const ffmpegCommand = `ffmpeg -y ${inputSources} -i ${audioPath} -filter_complex "concat=n=${imagenes.length}:v=1:a=0[v]" -map "[v]" -map ${imagenes.length}:a -c:v libx264 -pix_fmt yuv420p -aspect 9:16 -shortest -crf 18 ${outputPath}`;
 
-        console.log(`Ejecutando render simple y secuencial de imágenes: ${ffmpegCommand}`);
+        console.log(`Ejecutando render limpio de imágenes secuenciales...`);
 
         exec(ffmpegCommand, (renderError, stdout, stderr) => {
             // Borrar audio temporal
@@ -50,7 +46,7 @@ app.post('/render', (req, res) => {
                 return res.status(500).send(`Error en FFmpeg: ${stderr}`);
             }
             
-            // Enviar el video final de vuelta y borrarlo del servidor
+            // Enviar el video final de vuelta y liberarlo del servidor
             res.sendFile(outputPath, () => {
                 if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
             });
@@ -58,5 +54,4 @@ app.post('/render', (req, res) => {
     });
 });
 
-app.listen(3000, () => console.log('Servidor FFmpeg listo para imágenes secuenciales en puerto 3000'));
-```http://googleusercontent.com/image_generation_content/286
+app.listen(3000, () => console.log('Servidor FFmpeg listo en puerto 3000'));
