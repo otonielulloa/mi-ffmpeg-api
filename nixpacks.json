@@ -1,4 +1,4 @@
 {
   "providers": ["node"],
-  "aptPkgs": ["ffmpeg"]
+  "pkgs": ["ffmpeg"]
 }
