@@ -68,12 +68,10 @@ app.post('/render', (req, res) => {
             let filterComplex = '';
             filterComplex += `${imagenes.map((_, i) => `[${i}:v]`).join('')}concat=n=${imagenes.length}:v=1:a=0[v_base];`;
 
-            // 💡 CONFIGURACIÓN DE ESTILO OPTIMIZADA: 
-            // Cambiamos PrimaryColour a Blanco (&HFFFFFF&) para que el fondo sea limpio y resalte la palabra activa en amarillo.
-            // Aumentamos Fontsize=26 para un look más "Shorts/TikTok".
+            // 💡 AJUSTE DE TAMAÑO: Cambiado Fontsize a 18 para que se vea más pequeño y elegante.
             let videoOutLabel = 'v_base';
             if (fs.existsSync(srtPath)) {
-                filterComplex += `[v_base]subtitles='${srtPath}':force_style='Fontname=DejaVuSans-Bold,Fontsize=26,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=2,Alignment=10,MarginV=350'[v_subbed];`;
+                filterComplex += `[v_base]subtitles='${srtPath}':force_style='Fontname=DejaVuSans-Bold,Fontsize=18,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=2,Alignment=10,MarginV=350'[v_subbed];`;
                 videoOutLabel = 'v_subbed';
             }
 
@@ -89,7 +87,7 @@ app.post('/render', (req, res) => {
 
             const ffmpegCommand = `ffmpeg -y ${inputSources} -filter_complex "${filterComplex}" -map "[${videoOutLabel}]" -map "[a_final]" -c:v libx264 -pix_fmt yuv420p -aspect 9:16 -shortest -crf 18 ${outputPath}`;
 
-            console.log("Ejecutando Render con subtítulos estilo TikTok de 3 palabras...");
+            console.log("Ejecutando Render con limpieza e índices de subtítulos...");
 
             exec(ffmpegCommand, (renderError, stdout, stderr) => {
                 if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
