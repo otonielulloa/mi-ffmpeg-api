@@ -17,8 +17,7 @@ app.post('/render', (req, res) => {
     const outputPath = path.join(__dirname, outputName);
     const audioPath = path.join(__dirname, `audio-${timestamp}.mp3`);
     const bgMusicPath = path.join(__dirname, `bg-music-${timestamp}.mp3`);
-    const srtPath = path.join(__dirname, `subtitles-${timestamp}.srt`);
-
+    const srtPath = path.join(__dirname, `subtitles-${timestamp}.ass`); // Usamos extensión .ass
     // Conversión limpia a SRT manteniendo etiquetas HTML de color intactas
     const blocks = subtitles.split(/\r?\n\r?\n/);
     let srtContent = '';
@@ -32,9 +31,18 @@ app.post('/render', (req, res) => {
         srtContent += `${index}\n${formattedBlock}\n\n`;
         index++;
     });
-
+    // Necesitamos que el archivo .ass tenga un encabezado especial para que FFmpeg sepa cómo pintar los colores
+const header = "[Script Info]\nTitle: Subtitulos\nScriptType: v4.00+\nPlayResX: 1280\nPlayResY: 720\n\n[V4+ Styles]\nFormat: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,BorderStyle,Outline\nStyle: Default,DejaVuSans-Bold,40,&H00FFFFFF,&H00000000,1,2\n\n[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text\n";
+const events = subtitles.split('\n').filter(line => line.includes('-->')).map((line, index) => {
+    // Aquí traducimos el formato del VTT a ASS
+    const parts = line.split(' --> ');
+    const start = parts[0].replace('.', ',');
+    const end = parts[1].replace('.', ',');
+    // Esto requiere un ajuste fino, pero para probar la visibilidad, simplifiquemos:
+    return `Dialogue: 0,${start},${end},Default,,0,0,0,,${subtitles.split('\n\n')[index+1] || ''}`;
+}).join('\n');
     try {
-        fs.writeFileSync(srtPath, srtContent, 'utf-8');
+        fs.writeFileSync(srtPath, header + events, 'utf-8');
     } catch (err) {
         return res.status(500).send(`Error escribiendo SRT: ${err.message}`);
     }
@@ -67,7 +75,7 @@ app.post('/render', (req, res) => {
             // 💡 ESTILO SHORT VIRAL: Quitamos PrimaryColour fijo para permitir que el SRT decida qué palabra pintar de amarillo
             let videoOutLabel = 'v_base';
             if (fs.existsSync(srtPath)) {
-                filterComplex += `[v_base]subtitles='${srtPath}':force_style='Fontname=DejaVuSans-Bold,Fontsize=18,OutlineColour=&H000000&,BorderStyle=1,Outline=2,Alignment=2,MarginV=320'[v_subbed];`;
+                filterComplex += `[v_base]ass='${srtPath}'[v_subbed];`;
                 videoOutLabel = 'v_subbed';
             }
 
