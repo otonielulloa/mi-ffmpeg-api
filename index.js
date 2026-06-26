@@ -55,7 +55,7 @@ app.post('/render', (req, res) => {
             // Estampar subtítulos nativos en Amarillo brillante + Borde Negro + Centrado Abajo
             let videoOutLabel = 'v_base';
             if (subtitles && fs.existsSync(vttPath)) {
-                filterComplex += `[v_base]subtitles='${vttPath}':force_style='Fontname=DejaVuSans-Bold,Fontsize=18,PrimaryColour=&H00FFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=3,Alignment=2,MarginV=2'[v_subbed];`;
+                filterComplex += `[v_base]subtitles='${vttPath}':force_style='Fontname=DejaVuSans-Bold,Fontsize=18,PrimaryColour=&H00FFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=3,Alignment=10'[v_subbed];`;
                 videoOutLabel = 'v_subbed';
             }
 
