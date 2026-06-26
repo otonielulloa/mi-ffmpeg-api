@@ -60,9 +60,12 @@ app.post('/render', (req, res) => {
 
             // 💡 AJUSTE DE ESTILO: Fontsize=18 (más pequeño) y MarginV=380 (lo sube bastante más cerca del centro horizontal)
             let videoOutLabel = 'v_base';
-            if (fs.existsSync(srtPath)) {
-                filterComplex += `[v_base]subtitles='${srtPath}':force_style='Fontname=DejaVuSans-Bold,Fontsize=18,PrimaryColour=&H00FFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=3,Alignment=2,MarginV=380'[v_subbed];`;
-                videoOutLabel = 'v_subbed';
+           if (fs.existsSync(srtPath)) {
+              // 💡 SOLUCIÓN: Escapar la ruta absoluta para el filtro de FFmpeg en Linux
+              const escapedSrtPath = srtPath.replace(/\\/g, '/').replace(/:/g, '\\:');
+              
+              filterComplex += `[v_base]subtitles='${escapedSrtPath}':force_style='Fontname=DejaVuSans-Bold,Fontsize=18,PrimaryColour=&H00FFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=3,Alignment=2,MarginV=380'[v_subbed];`;
+              videoOutLabel = 'v_subbed';
             }
 
             if (tieneMusica) {
