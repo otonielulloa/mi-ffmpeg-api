@@ -8,8 +8,8 @@ app.use(express.json({ limit: '10mb' }));
 app.post('/render', (req, res) => {
     const { imagenes, audio, subtitles, musica } = req.body;
     
-    if (!imagenes || !audio || !subtitles) {
-        return res.status(400).json({ error: 'Faltan parámetros básicos (imagenes, audio o subtítulos)' });
+    if (!imagenes || !audio) {
+        return res.status(400).json({ error: 'Faltan parámetros básicos (imagenes o audio)' });
     }
 
     const timestamp = Date.now();
@@ -17,25 +17,18 @@ app.post('/render', (req, res) => {
     const outputPath = path.join(__dirname, outputName);
     const audioPath = path.join(__dirname, `audio-${timestamp}.mp3`);
     const bgMusicPath = path.join(__dirname, `bg-music-${timestamp}.mp3`);
-    
-    // 💡 SOLUCIÓN RUTA: Ahora el archivo SRT se crea con ruta absoluta exacta dentro de /app/
-    const srtPath = path.join(__dirname, `subtitles-${timestamp}.srt`);
-    const srtContent = subtitles
-        .replace(/^WEBVTT\s*/i, '')
-        .replace(/(\d{2}:\d{2}:\d{2})\.(\d{3})/g, '$1,$2');
+    const vttPath = path.join(__dirname, `subtitles-${timestamp}.vtt`);
 
-    try {
-        fs.writeFileSync(srtPath, srtContent, 'utf-8');
-    } catch (err) {
-        return res.status(500).send(`Error escribiendo SRT: ${err.message}`);
-    }
-
-    // Descargar audio de voz principal
-    exec(`curl -L -o ${audioPath} "${audio}"`, (audioError) => {
+    // 1. Descargar voz principal
+    exec(`curl -o ${audioPath} "${audio}"`, (audioError) => {
         if (audioError) {
             console.error('Error descargando voz:', audioError);
-            if (fs.existsSync(srtPath)) fs.unlinkSync(srtPath);
             return res.status(500).send('Error descargando audio de voz');
+        }
+
+        // Guardar subtítulos locales si existen
+        if (subtitles) {
+            fs.writeFileSync(vttPath, subtitles, 'utf-8');
         }
 
         let tieneMusica = !!musica;
@@ -56,18 +49,17 @@ app.post('/render', (req, res) => {
             }
 
             let filterComplex = '';
+            // Concat de imágenes secuenciales
             filterComplex += `${imagenes.map((_, i) => `[${i}:v]`).join('')}concat=n=${imagenes.length}:v=1:a=0[v_base];`;
 
-            // 💡 AJUSTE DE ESTILO: Fontsize=18 (más pequeño) y MarginV=380 (lo sube bastante más cerca del centro horizontal)
+            // Estampar subtítulos nativos en Amarillo brillante + Borde Negro + Centrado Abajo
             let videoOutLabel = 'v_base';
-           if (fs.existsSync(srtPath)) {
-              // 💡 SOLUCIÓN: Escapar la ruta absoluta para el filtro de FFmpeg en Linux
-              const escapedSrtPath = srtPath.replace(/\\/g, '/').replace(/:/g, '\\:');
-              
-              filterComplex += `[v_base]subtitles='${escapedSrtPath}':force_style='Fontname=DejaVuSans-Bold,Fontsize=18,PrimaryColour=&H00FFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=3,Alignment=2,MarginV=380'[v_subbed];`;
-              videoOutLabel = 'v_subbed';
+            if (subtitles && fs.existsSync(vttPath)) {
+                filterComplex += `[v_base]subtitles='${vttPath}':force_style='Fontname=DejaVuSans-Bold,Fontsize=26,PrimaryColour=&H00FFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=3,Alignment=2'[v_subbed];`;
+                videoOutLabel = 'v_subbed';
             }
 
+            // Mezcla de Audio: Voz clara (100%) y Música de fondo suave (12%)
             if (tieneMusica) {
                 filterComplex += `[${vozIndex}:a]volume=1.0[voice];[${musicaIndex}:a]volume=0.12[bg];[voice][bg]amix=inputs=2:duration=first[a_final];`;
             } else {
@@ -80,12 +72,12 @@ app.post('/render', (req, res) => {
 
             const ffmpegCommand = `ffmpeg -y ${inputSources} -filter_complex "${filterComplex}" -map "[${videoOutLabel}]" -map "[a_final]" -c:v libx264 -pix_fmt yuv420p -aspect 9:16 -shortest -crf 18 ${outputPath}`;
 
-            console.log("Ejecutando Súper Render con subtítulos centrados y fijos...");
+            console.log("Ejecutando Súper Render Pro con Sincronización Real...");
 
             exec(ffmpegCommand, (renderError, stdout, stderr) => {
                 if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
                 if (fs.existsSync(bgMusicPath)) fs.unlinkSync(bgMusicPath);
-                if (fs.existsSync(srtPath)) fs.unlinkSync(srtPath);
+                if (fs.existsSync(vttPath)) fs.unlinkSync(vttPath);
 
                 if (renderError) {
                     console.error(stderr);
@@ -113,4 +105,4 @@ app.post('/render', (req, res) => {
     });
 });
 
-app.listen(3000, () => console.log('Servidor FFmpeg Pro Centrado y blindado listo'));
+app.listen(3000, () => console.log('Servidor FFmpeg Pro Multimedia con subtítulos activo'));
