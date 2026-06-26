@@ -19,7 +19,7 @@ app.post('/render', (req, res) => {
     const bgMusicPath = path.join(__dirname, `bg-music-${timestamp}.mp3`);
     const srtPath = path.join(__dirname, `subtitles-${timestamp}.srt`);
 
-    // 💡 SOLUCIÓN DEFINITIVA: Convertir WebVTT a SRT Real estructurando los bloques con números (1, 2, 3...)
+    // Convertir WebVTT a SRT Real estructurando los bloques con números (1, 2, 3...)
     const blocks = subtitles.split(/\r?\n\r?\n/);
     let srtContent = '';
     let index = 1;
@@ -68,10 +68,12 @@ app.post('/render', (req, res) => {
             let filterComplex = '';
             filterComplex += `${imagenes.map((_, i) => `[${i}:v]`).join('')}concat=n=${imagenes.length}:v=1:a=0[v_base];`;
 
-            // 💡 ESTILO AJUSTADO: Fontsize=16 (Más pequeño y fino) y MarginV=350 (Posición ideal pre-centro)
+            // 💡 CONFIGURACIÓN DE ESTILO OPTIMIZADA: 
+            // Cambiamos PrimaryColour a Blanco (&HFFFFFF&) para que el fondo sea limpio y resalte la palabra activa en amarillo.
+            // Aumentamos Fontsize=26 para un look más "Shorts/TikTok".
             let videoOutLabel = 'v_base';
             if (fs.existsSync(srtPath)) {
-                filterComplex += `[v_base]subtitles='${srtPath}':force_style='Fontname=DejaVuSans-Bold,Fontsize=16,PrimaryColour=&H00FFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=2,Alignment=10'[v_subbed];`;
+                filterComplex += `[v_base]subtitles='${srtPath}':force_style='Fontname=DejaVuSans-Bold,Fontsize=26,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=2,Alignment=10,MarginV=350'[v_subbed];`;
                 videoOutLabel = 'v_subbed';
             }
 
@@ -87,7 +89,7 @@ app.post('/render', (req, res) => {
 
             const ffmpegCommand = `ffmpeg -y ${inputSources} -filter_complex "${filterComplex}" -map "[${videoOutLabel}]" -map "[a_final]" -c:v libx264 -pix_fmt yuv420p -aspect 9:16 -shortest -crf 18 ${outputPath}`;
 
-            console.log("Ejecutando Súper Render con limpieza e índices de subtítulos...");
+            console.log("Ejecutando Render con subtítulos estilo TikTok de 3 palabras...");
 
             exec(ffmpegCommand, (renderError, stdout, stderr) => {
                 if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
