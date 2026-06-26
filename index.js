@@ -18,14 +18,14 @@ app.post('/render', (req, res) => {
     const audioPath = path.join(__dirname, `audio-${timestamp}.mp3`);
     const bgMusicPath = path.join(__dirname, `bg-music-${timestamp}.mp3`);
     
-    // Convertimos el formato VTT a SRT clásico para máxima compatibilidad con FFmpeg
-    const srtFilename = `subtitles-${timestamp}.srt`;
+    // 💡 SOLUCIÓN RUTA: Ahora el archivo SRT se crea con ruta absoluta exacta dentro de /app/
+    const srtPath = path.join(__dirname, `subtitles-${timestamp}.srt`);
     const srtContent = subtitles
         .replace(/^WEBVTT\s*/i, '')
         .replace(/(\d{2}:\d{2}:\d{2})\.(\d{3})/g, '$1,$2');
 
     try {
-        fs.writeFileSync(srtFilename, srtContent, 'utf-8');
+        fs.writeFileSync(srtPath, srtContent, 'utf-8');
     } catch (err) {
         return res.status(500).send(`Error escribiendo SRT: ${err.message}`);
     }
@@ -34,7 +34,7 @@ app.post('/render', (req, res) => {
     exec(`curl -L -o ${audioPath} "${audio}"`, (audioError) => {
         if (audioError) {
             console.error('Error descargando voz:', audioError);
-            if (fs.existsSync(srtFilename)) fs.unlinkSync(srtFilename);
+            if (fs.existsSync(srtPath)) fs.unlinkSync(srtPath);
             return res.status(500).send('Error descargando audio de voz');
         }
 
@@ -58,10 +58,10 @@ app.post('/render', (req, res) => {
             let filterComplex = '';
             filterComplex += `${imagenes.map((_, i) => `[${i}:v]`).join('')}concat=n=${imagenes.length}:v=1:a=0[v_base];`;
 
-            // 💡 AJUSTE DE ESTILO: Fontsize=20 (más pequeño) y MarginV=220 (lo sube más hacia el medio/centro)
+            // 💡 AJUSTE DE ESTILO: Fontsize=18 (más pequeño) y MarginV=380 (lo sube bastante más cerca del centro horizontal)
             let videoOutLabel = 'v_base';
-            if (fs.existsSync(srtFilename)) {
-                filterComplex += `[v_base]subtitles=${srtFilename}:force_style='Fontname=DejaVuSans-Bold,Fontsize=20,PrimaryColour=&H00FFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=3,Alignment=2,MarginV=220'[v_subbed];`;
+            if (fs.existsSync(srtPath)) {
+                filterComplex += `[v_base]subtitles='${srtPath}':force_style='Fontname=DejaVuSans-Bold,Fontsize=18,PrimaryColour=&H00FFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=3,Alignment=2,MarginV=380'[v_subbed];`;
                 videoOutLabel = 'v_subbed';
             }
 
@@ -77,12 +77,12 @@ app.post('/render', (req, res) => {
 
             const ffmpegCommand = `ffmpeg -y ${inputSources} -filter_complex "${filterComplex}" -map "[${videoOutLabel}]" -map "[a_final]" -c:v libx264 -pix_fmt yuv420p -aspect 9:16 -shortest -crf 18 ${outputPath}`;
 
-            console.log("Ejecutando Súper Render con subtítulos optimizados...");
+            console.log("Ejecutando Súper Render con subtítulos centrados y fijos...");
 
             exec(ffmpegCommand, (renderError, stdout, stderr) => {
                 if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
                 if (fs.existsSync(bgMusicPath)) fs.unlinkSync(bgMusicPath);
-                if (fs.existsSync(srtFilename)) fs.unlinkSync(srtFilename);
+                if (fs.existsSync(srtPath)) fs.unlinkSync(srtPath);
 
                 if (renderError) {
                     console.error(stderr);
@@ -110,4 +110,4 @@ app.post('/render', (req, res) => {
     });
 });
 
-app.listen(3000, () => console.log('Servidor FFmpeg Pro con subtítulos centrados activo'));
+app.listen(3000, () => console.log('Servidor FFmpeg Pro Centrado y blindado listo'));
