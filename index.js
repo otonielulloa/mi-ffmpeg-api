@@ -71,7 +71,7 @@ app.post('/render', (req, res) => {
             // 💡 ESTILO AJUSTADO: Fontsize=16 (Más pequeño y fino) y MarginV=350 (Posición ideal pre-centro)
             let videoOutLabel = 'v_base';
             if (fs.existsSync(srtPath)) {
-                filterComplex += `[v_base]subtitles='${srtPath}':force_style='Fontname=DejaVuSans-Bold,Fontsize=16,PrimaryColour=&H00FFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=2,Alignment=2,MarginV=350'[v_subbed];`;
+                filterComplex += `[v_base]subtitles='${srtPath}':force_style='Fontname=DejaVuSans-Bold,Fontsize=16,PrimaryColour=&H00FFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=2,Alignment=10'[v_subbed];`;
                 videoOutLabel = 'v_subbed';
             }
 
