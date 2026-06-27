@@ -52,8 +52,10 @@ app.post('/render', (req, res) => {
 
         const procesarRender = () => {
             let inputSources = '';
+            
+            // 💡 MEJORA 1: Forzamos framerate de 30fps desde la entrada de la imagen para evitar parpadeos en el zoom
             imagenes.forEach((img) => {
-                inputSources += `-loop 1 -t ${img.duracion} -i "${img.imageUrl}" `;
+                inputSources += `-loop 1 -framerate 30 -t ${img.duracion} -i "${img.imageUrl}" `;
             });
 
             inputSources += `-i ${audioPath} `;
@@ -66,9 +68,21 @@ app.post('/render', (req, res) => {
             }
 
             let filterComplex = '';
-            filterComplex += `${imagenes.map((_, i) => `[${i}:v]`).join('')}concat=n=${imagenes.length}:v=1:a=0[v_base];`;
+            let concatInputs = '';
 
-            // 💡 AJUSTE DE TAMAÑO: Cambiado Fontsize a 18 para que se vea más pequeño y elegante.
+            // 💡 MEJORA 2: Aplicamos movimiento individual (Efecto Ken Burns) a cada imagen antes del concat
+            imagenes.forEach((_, i) => {
+                // Alternamos efectos: las escenas pares hacen Zoom In, las impares hacen Zoom Out
+                let zoomExpression = (i % 2 === 0) ? "'1+0.0007*on'" : "'1.15-0.0007*on'";
+                
+                filterComplex += `[${i}:v]scale=1080x1920,zoompan=z=${zoomExpression}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1080x1920,fps=30[v${i}];`;
+                concatInputs += `[v${i}]`;
+            });
+
+            // Concatemos los clips que ya tienen movimiento integrado ([v0], [v1], etc.)
+            filterComplex += `${concatInputs}concat=n=${imagenes.length}:v=1:a=0[v_base];`;
+
+            // AJUSTE DE TAMAÑO: Manteniendo tus subtítulos elegantes
             let videoOutLabel = 'v_base';
             if (fs.existsSync(srtPath)) {
                 filterComplex += `[v_base]subtitles='${srtPath}':force_style='Fontname=DejaVuSans-Bold,Fontsize=18,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=2,Alignment=10,MarginV=350'[v_subbed];`;
@@ -85,9 +99,10 @@ app.post('/render', (req, res) => {
                 filterComplex = filterComplex.slice(0, -1);
             }
 
-            const ffmpegCommand = `ffmpeg -y ${inputSources} -filter_complex "${filterComplex}" -map "[${videoOutLabel}]" -map "[a_final]" -c:v libx264 -pix_fmt yuv420p -aspect 9:16 -shortest -crf 18 ${outputPath}`;
+            // 💡 MEJORA 3: Aseguramos renders estables a 30fps nativos para TikTok
+            const ffmpegCommand = `ffmpeg -y ${inputSources} -filter_complex "${filterComplex}" -map "[${videoOutLabel}]" -map "[a_final]" -c:v libx264 -pix_fmt yuv420p -r 30 -aspect 9:16 -shortest -crf 18 ${outputPath}`;
 
-            console.log("Ejecutando Render con limpieza e índices de subtítulos...");
+            console.log("Ejecutando Render con Efectos de Movimiento de IA Pro...");
 
             exec(ffmpegCommand, (renderError, stdout, stderr) => {
                 if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
@@ -120,4 +135,4 @@ app.post('/render', (req, res) => {
     });
 });
 
-app.listen(3000, () => console.log('Servidor FFmpeg Pro con limpieza de subtítulos activo'));
+app.listen(3000, () => console.log('Servidor FFmpeg Pro con Efectos Ken Burns Animados Activo'));
