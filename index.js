@@ -51,9 +51,12 @@ app.post('/render', (req, res) => {
         let tieneMusica = !!musica;
 
         const procesarRender = () => {
+            // 💡 SOLUCIÓN AQUÍ: Calculamos la duración total exacta sumando cada escena
+            const duracionTotal = imagenes.reduce((sum, img) => sum + parseFloat(img.duracion), 0);
+            
             let inputSources = '';
             
-            // 💡 MEJORA 1: Forzamos framerate de 30fps desde la entrada de la imagen para evitar parpadeos en el zoom
+            // Forzamos framerate de 30fps desde la entrada de la imagen para evitar parpadeos en el zoom
             imagenes.forEach((img) => {
                 inputSources += `-loop 1 -framerate 30 -t ${img.duracion} -i "${img.imageUrl}" `;
             });
@@ -70,7 +73,7 @@ app.post('/render', (req, res) => {
             let filterComplex = '';
             let concatInputs = '';
 
-            // 💡 MEJORA 2: Aplicamos movimiento individual (Efecto Ken Burns) a cada imagen antes del concat
+            // Aplicamos movimiento individual (Efecto Ken Burns) a cada imagen antes del concat
             imagenes.forEach((_, i) => {
                 // Alternamos efectos: las escenas pares hacen Zoom In, las impares hacen Zoom Out
                 let zoomExpression = (i % 2 === 0) ? "'1+0.0007*on'" : "'1.15-0.0007*on'";
@@ -82,7 +85,7 @@ app.post('/render', (req, res) => {
             // Concatemos los clips que ya tienen movimiento integrado ([v0], [v1], etc.)
             filterComplex += `${concatInputs}concat=n=${imagenes.length}:v=1:a=0[v_base];`;
 
-            // AJUSTE DE TAMAÑO: Manteniendo tus subtítulos elegantes
+            // Ajuste de subtítulos elegantes
             let videoOutLabel = 'v_base';
             if (fs.existsSync(srtPath)) {
                 filterComplex += `[v_base]subtitles='${srtPath}':force_style='Fontname=DejaVuSans-Bold,Fontsize=18,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=2,Alignment=10,MarginV=350'[v_subbed];`;
@@ -99,10 +102,10 @@ app.post('/render', (req, res) => {
                 filterComplex = filterComplex.slice(0, -1);
             }
 
-            // 💡 MEJORA 3: Aseguramos renders estables a 30fps nativos para TikTok
-            const ffmpegCommand = `ffmpeg -y ${inputSources} -filter_complex "${filterComplex}" -map "[${videoOutLabel}]" -map "[a_final]" -c:v libx264 -pix_fmt yuv420p -r 30 -aspect 9:16 -shortest -crf 18 ${outputPath}`;
+            // 💡 SOLUCIÓN AQUÍ: Cambiamos '-shortest' por '-t ${duracionTotal}' para obligar a FFmpeg a cortar en el milisegundo exacto.
+            const ffmpegCommand = `ffmpeg -y ${inputSources} -filter_complex "${filterComplex}" -map "[${videoOutLabel}]" -map "[a_final]" -c:v libx264 -pix_fmt yuv420p -r 30 -aspect 9:16 -t ${duracionTotal} -crf 18 ${outputPath}`;
 
-            console.log("Ejecutando Render con Efectos de Movimiento de IA Pro...");
+            console.log(`Ejecutando Render con tiempo límite estricto de ${duracionTotal} segundos...`);
 
             exec(ffmpegCommand, (renderError, stdout, stderr) => {
                 if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
@@ -135,4 +138,4 @@ app.post('/render', (req, res) => {
     });
 });
 
-app.listen(3000, () => console.log('Servidor FFmpeg Pro con Efectos Ken Burns Animados Activo'));
+app.listen(3000, () => console.log('Servidor FFmpeg Pro con Control de Tiempo Absoluto Activo'));
