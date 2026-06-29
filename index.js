@@ -93,7 +93,7 @@ app.post('/render', (req, res) => {
             }
 
             if (tieneMusica) {
-                filterComplex += `[${vozIndex}:a]volume=1.0[voice];[${musicaIndex}:a]volume=0.12[bg];[voice][bg]amix=inputs=2:duration=first[a_final];`;
+                filterComplex += `[${vozIndex}:a]volume=1.0[voice];[${musicaIndex}:a]volume=0.20[bg];[voice][bg]amix=inputs=2:duration=first[a_final];`;
             } else {
                 filterComplex += `[${vozIndex}:a]volume=1.0[a_final];`;
             }
