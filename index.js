@@ -102,9 +102,14 @@ app.post('/render', (req, res) => {
                 filterComplex = filterComplex.slice(0, -1);
             }
 
-            // 💡 SOLUCIÓN AQUÍ: Cambiamos '-shortest' por '-t ${duracionTotal}' para obligar a FFmpeg a cortar en el milisegundo exacto.
-            const ffmpegCommand = `ffmpeg -y ${inputSources} -filter_complex "${filterComplex}" -map "[${videoOutLabel}]" -map "[a_final]" -c:v libx264 -pix_fmt yuv420p -r 30 -aspect 9:16 -t ${duracionTotal} -crf 18 ${outputPath}`;
+          // 1. Calculamos el bitrate objetivo para que el video NUNCA supere ~18 MB
+// (18 MB en bits = 18 * 8 * 1024 * 1024 = 150,994,944 bits)
+const targetBits = 18 * 8 * 1024 * 1024;
+const totalBitrateKbps = Math.floor((targetBits / duracionTotal) / 1000);
+const videoBitrateKbps = Math.max(totalBitrateKbps - 128, 200); // Descontamos 128k del audio
 
+// 2. Reemplazamos -crf 18 por -b:v ${videoBitrateKbps}k -maxrate ${videoBitrateKbps}k -bufsize ${videoBitrateKbps * 2}k
+const ffmpegCommand = `ffmpeg -y ${inputSources} -filter_complex "${filterComplex}" -map "[${videoOutLabel}]" -map "[a_final]" -c:v libx264 -b:v ${videoBitrateKbps}k -maxrate ${videoBitrateKbps}k -bufsize ${videoBitrateKbps * 2}k -pix_fmt yuv420p -r 30 -aspect 9:16 -t ${duracionTotal} ${outputPath}`;
             console.log(`Ejecutando Render con tiempo límite estricto de ${duracionTotal} segundos...`);
 
             exec(ffmpegCommand, (renderError, stdout, stderr) => {
