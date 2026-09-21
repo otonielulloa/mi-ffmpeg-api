@@ -73,14 +73,17 @@ app.post('/render', (req, res) => {
             let filterComplex = '';
             let concatInputs = '';
 
-            // Aplicamos movimiento individual (Efecto Ken Burns) a cada imagen antes del concat
-            imagenes.forEach((_, i) => {
-                // Alternamos efectos: las escenas pares hacen Zoom In, las impares hacen Zoom Out
-                let zoomExpression = (i % 2 === 0) ? "'1+0.0007*on'" : "'1.15-0.0007*on'";
-                
-                filterComplex += `[${i}:v]scale=1080x1920,zoompan=z=${zoomExpression}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1080x1920,fps=30[v${i}];`;
-                concatInputs += `[v${i}]`;
-            });
+         // Aplicamos escalado, normalización de SAR y efecto Ken Burns a cada imagen
+imagenes.forEach((_, i) => {
+    // Alternamos efectos: las escenas pares hacen Zoom In, las impares hacen Zoom Out
+    let zoomExpression = (i % 2 === 0) ? "'1+0.0007*on'" : "'1.15-0.0007*on'";
+    
+    // 1. Normalizamos la imagen a 1080x1920 manteniendo aspecto y recortando excesos (crop)
+    // 2. Forzamos setsar=1 para evitar discrepancias de SAR (Sample Aspect Ratio)
+    // 3. Aplicamos el zoompan y aseguramos los 30 fps
+    filterComplex += `[${i}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,zoompan=z=${zoomExpression}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1080x1920,fps=30[v${i}];`;
+    concatInputs += `[v${i}]`;
+});
 
             // Concatemos los clips que ya tienen movimiento integrado ([v0], [v1], etc.)
             filterComplex += `${concatInputs}concat=n=${imagenes.length}:v=1:a=0[v_base];`;
